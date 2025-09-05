@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Solo per utenti con email/password
+  nickname      String?   // Nickname personalizzato
+  dailyGoal     Int       @default(10) // Obiettivo giornaliero in minuti
+  weeklyGoal    Int       @default(4)  // Obiettivo settimanale (4+ volte)
+  currentStreak Int       @default(0)  // Streak attuale
+  totalWalks    Int       @default(0)  // Camminate totali
+  totalMinutes  Int       @default(0)  // Minuti totali
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relazioni
+  accounts        Account[]
+  sessions        Session[]
+  walks           Walk[]
+  kudos           Kudos[]
+  badges          UserBadge[]
+  scheduledWalks  ScheduledWalk[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Walk {
+  id          String   @id @default(cuid())
+  userId      String
+  duration    Int      // Durata in minuti
+  completedAt DateTime @default(now())
+  notes       String?  // Note opzionali dell'utente
+  date        String   // Data in formato YYYY-MM-DD
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("walks")
+}
+
+model ScheduledWalk {
+  id          String   @id @default(cuid())
+  userId      String
+  scheduledDate String // Data programmata in formato YYYY-MM-DD
+  time        String?  // Ora programmata (opzionale)
+  notes       String?  // Note per la camminata programmata
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scheduledDate])
+  @@map("scheduled_walks")
+}
+
+model Kudos {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // Tipo di kudos: "daily_goal", "streak_3", "streak_7", etc.
+  title       String   // Titolo del kudos
+  description String   // Descrizione del kudos
+  earnedAt    DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kudos")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeType String   // Tipo badge: "first_walk", "three_days", "one_week", etc.
+  earnedAt  DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeType])
+  @@map("user_badges")
+}
